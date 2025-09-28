@@ -12,7 +12,3 @@ services:
       - 8.8.8.8
       - 8.8.4.4
     restart: always
-    volumes:
-      - .:/app  # Optional: allows live code updates during development
-    environment:
-      - PYTHONUNBUFFERED=1  # optional: ensures logs appear in real-time
