@@ -1,0 +1,15 @@
+version: "3.9"
+
+services:
+  bookhawk:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bookhawk
+    ports:
+      - "8082:8082"
+    restart: always
+    volumes:
+      - .:/app  # Optional: allows live code updates during development
+    environment:
+      - PYTHONUNBUFFERED=1  # optional: ensures logs appear in real-time
