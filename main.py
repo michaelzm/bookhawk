@@ -95,27 +95,25 @@ async def upload_image(file: UploadFile = File(...)):
             det_results = yolo_model(img_np)
             box_infos = []
             
-            # Use Pillow for drawing
-            pil_img_with_boxes = Image.fromarray(img_np)
-            from PIL import ImageDraw
-            draw = ImageDraw.Draw(pil_img_with_boxes)
+            img_with_boxes = img_np # Default to original image
 
-            for r in det_results:
-                for box, cls, conf in zip(r.boxes.xyxy, r.boxes.cls, r.boxes.conf):
-                    if int(cls) == BOOK_CLASS_INDEX:
-                        box_infos.append({
-                            "box": box.tolist(),
-                            "prob": float(conf)
-                        })
-                        # Draw rectangle on the image
-                        x1, y1, x2, y2 = map(int, box.tolist())
-                        prob = float(conf)
-                        draw.rectangle([x1, y1, x2, y2], outline="lime", width=2)
-                        # Add label with probability
-                        label = f"Book: {prob:.2f}"
-                        draw.text((x1, y1 - 10), label, fill="lime")
+            if det_results:
+                # Calculate dynamic line width
+                image_width = img_np.shape[1]
+                line_width = max(1, int(image_width / 800))
+                # Use the plot() method from the first result object, with custom line thickness
+                img_with_boxes_bgr = det_results[0].plot(line_width=line_width)
+                # Convert BGR to RGB
+                img_with_boxes = img_with_boxes_bgr[:, :, ::-1]
 
-            img_with_boxes = np.array(pil_img_with_boxes)
+                for r in det_results:
+                    for box, cls, conf in zip(r.boxes.xyxy, r.boxes.cls, r.boxes.conf):
+                        if int(cls) == BOOK_CLASS_INDEX:
+                            box_infos.append({
+                                "box": box.tolist(),
+                                "prob": float(conf)
+                            })
+
 
             # Stream the initial image with all boxes
             import io
@@ -133,6 +131,8 @@ async def upload_image(file: UploadFile = File(...)):
                 return
 
             for i, box_info in enumerate(box_infos):
+                if i > 3:
+                    break
                 logging.info(f"Processing book {i+1}/{len(box_infos)}.")
                 bbox = box_info["box"]
                 prob = box_info["prob"]
