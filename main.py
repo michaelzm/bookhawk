@@ -10,7 +10,6 @@ from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from PIL import Image
 import numpy as np
-import cv2
 import requests
 from ultralytics import YOLO, SAM
 from fastapi.middleware.cors import CORSMiddleware
@@ -95,7 +94,11 @@ async def upload_image(file: UploadFile = File(...)):
             logging.info("Starting YOLO detection.")
             det_results = yolo_model(img_np)
             box_infos = []
-            img_with_boxes = np.copy(img_np)
+            
+            # Use Pillow for drawing
+            pil_img_with_boxes = Image.fromarray(img_np)
+            from PIL import ImageDraw
+            draw = ImageDraw.Draw(pil_img_with_boxes)
 
             for r in det_results:
                 for box, cls, conf in zip(r.boxes.xyxy, r.boxes.cls, r.boxes.conf):
@@ -107,10 +110,12 @@ async def upload_image(file: UploadFile = File(...)):
                         # Draw rectangle on the image
                         x1, y1, x2, y2 = map(int, box.tolist())
                         prob = float(conf)
-                        cv2.rectangle(img_with_boxes, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                        draw.rectangle([x1, y1, x2, y2], outline="lime", width=2)
                         # Add label with probability
                         label = f"Book: {prob:.2f}"
-                        cv2.putText(img_with_boxes, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+                        draw.text((x1, y1 - 10), label, fill="lime")
+
+            img_with_boxes = np.array(pil_img_with_boxes)
 
             # Stream the initial image with all boxes
             import io
@@ -145,7 +150,18 @@ async def upload_image(file: UploadFile = File(...)):
                 results = sam_model(img_np, bboxes=[bbox])
                 masks = results[0].masks.data.cpu().numpy()
                 mask_raw = masks[0]
-                x, y, w, h = cv2.boundingRect(mask_raw.astype(np.uint8))
+                
+                # Find bounding box from mask using numpy
+                rows = np.any(mask_raw, axis=1)
+                cols = np.any(mask_raw, axis=0)
+                if not np.any(rows) or not np.any(cols):
+                    # Handle empty mask
+                    x, y, w, h = 0, 0, 0, 0
+                else:
+                    ymin, ymax = np.where(rows)[0][[0, -1]]
+                    xmin, xmax = np.where(cols)[0][[0, -1]]
+                    x, y, w, h = xmin, ymin, xmax - xmin, ymax - ymin
+
                 cropped_mask = mask_raw[y:y+h, x:x+w]
                 cropped_image = img_np[y:y+h, x:x+w]
                 segmented_image = np.zeros((h, w, 4), dtype=np.uint8)
