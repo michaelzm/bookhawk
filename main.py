@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from PIL import Image
 import numpy as np
 import cv2
-import ollama
+import requests
 from ultralytics import YOLO, SAM
 
 load_dotenv()
@@ -28,21 +28,22 @@ sam_model = SAM(SAM_MODEL_PATH)
 def ocr(ollama_host, model_name, prompt, image_path):
     print("connect to ollama host:", ollama_host)
     try:
-        client = ollama.Client(host=ollama_host)
         if not os.path.exists(image_path):
             return {"error": f"Image file not found at '{image_path}'"}
         with open(image_path, "rb") as image_file:
             encoded_image = base64.b64encode(image_file.read()).decode("utf-8")
-        response = client.chat(
-            model=model_name,
-            messages=[{
-                'role': 'user',
-                'content': prompt,
-                'images': [encoded_image]
+        payload = {
+            "model": model_name,
+            "messages": [{
+                "role": "user",
+                "content": prompt,
+                "images": [encoded_image]
             }],
-            stream=False
-        )
-        return response['message']['content']
+            "stream": False
+        }
+        response = requests.post(f"{ollama_host}/api/chat", json=payload, timeout=120)
+        response.raise_for_status()
+        return response.json()['message']['content']
     except Exception as e:
         return {"error": str(e)}
 
