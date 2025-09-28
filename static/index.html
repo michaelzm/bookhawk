@@ -3,10 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>React App</title>
+    <title>BookHawk</title>
     <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        #root {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1, h2, h3, h4 {
+            color: #1c1e21;
+        }
+        .upload-button {
+            background-color: #1877f2;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 18px;
+            margin-bottom: 20px;
+            transition: background-color 0.3s;
+        }
+        .upload-button:hover {
+            background-color: #166fe5;
+        }
+        .book-result {
+            border: 1px solid #dddfe2;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+            background-color: #f7f8fa;
+        }
+        .images-container {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .image-box {
+            flex: 1;
+            text-align: center;
+        }
+        .image-box img {
+            width: 100%;
+            height: 400px;
+            object-fit: contain;
+            border: 1px solid #dddfe2;
+            border-radius: 4px;
+        }
+        pre {
+            background-color: #e9ebee;
+            padding: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .initial-image-container img {
+            max-width: 100%;
+            border-radius: 4px;
+        }
+    </style>
 </head>
 <body>
     <div id="root"></div>
@@ -93,8 +161,8 @@
             
             return (
                 <div>
-                    <h1>Upload Image</h1>
-                    <button onClick={handleButtonClick}>Upload Image</button>
+                    <h1>BookHawk</h1>
+                    <button onClick={handleButtonClick} className="upload-button">Upload Image</button>
                     <input
                         type="file"
                         accept="image/*"
@@ -103,27 +171,33 @@
                         style={{ display: 'none' }}
                     />
                     {initialImage && (
-                        <div style={{ marginTop: '20px' }}>
+                        <div className="initial-image-container" style={{ marginTop: '20px' }}>
                             <h2>Initial Image with Detected Books</h2>
-                            <img src={`data:image/png;base64,${initialImage}`} alt="Initial image with boxes" style={{ maxWidth: '100%' }} />
+                            <img src={`data:image/png;base64,${initialImage}`} alt="Initial image with boxes" />
                         </div>
                     )}
                     {uploadResults.length > 0 && (
                         <div style={{ marginTop: '20px' }}>
-                            <h2>Response:</h2>
+                            <h2>Detected Books:</h2>
                             {uploadResults.map((result, index) => (
-                                <div key={index} style={{ marginBottom: '20px', border: '1px solid #ccc', padding: '10px' }}>
+                                <div key={index} className="book-result">
                                     {result.error ? (
                                         <pre>{JSON.stringify(result, null, 2)}</pre>
                                     ) : (
                                         <div>
                                             <h3>Book {index + 1}</h3>
-                                            <h4>YOLO Crop</h4>
-                                            {result.yolo_crop_b64 && <img src={`data:image/png;base64,${result.yolo_crop_b64}`} alt="YOLO cropped" style={{ maxWidth: '100%' }} />}
-                                            <h4>SAM Segmentation</h4>
-                                            {result.sam_segmentation_b64 && <img src={`data:image/png;base64,${result.sam_segmentation_b64}`} alt="SAM segmented" style={{ maxWidth: '100%' }} />}
-                                            <h4>OCR Result</h4>
-                                            <pre>{JSON.stringify(result.ocr_result, null, 2)}</pre>
+                                            <div className="images-container">
+                                                <div className="image-box">
+                                                    <h4>Detected Book</h4>
+                                                    {result.yolo_crop_b64 && <img src={`data:image/png;base64,${result.yolo_crop_b64}`} alt="YOLO cropped" />}
+                                                </div>
+                                                <div className="image-box">
+                                                    <h4>Segmented Book</h4>
+                                                    {result.sam_segmentation_b64 && <img src={`data:image/png;base64,${result.sam_segmentation_b64}`} alt="SAM segmented" />}
+                                                </div>
+                                            </div>
+                                            <h4>Book Information</h4>
+                                            <pre>{result.ocr_result && result.ocr_result.title ? `Title: ${result.ocr_result.title}\nAuthor: ${result.ocr_result.author}` : JSON.stringify(result.ocr_result, null, 2)}</pre>
                                         </div>
                                     )}
                                 </div>
