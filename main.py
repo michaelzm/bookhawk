@@ -22,6 +22,8 @@ PROMPT = os.getenv("PROMPT", "You will receive a image of a book front view in a
 YOLO_MODEL_PATH = os.getenv("YOLO_MODEL_PATH", "yolov10x.pt")
 BOOK_CLASS_INDEX = int(os.getenv("BOOK_CLASS_INDEX", "73"))
 SAM_MODEL_PATH = os.getenv("SAM_MODEL_PATH", "sam2.1_b.pt")
+ABORT_BOOK_COUNT = int(os.getenv("ABORT_BOOK_COUNT", "30"))
+
 
 app = FastAPI()
 
@@ -131,7 +133,8 @@ async def upload_image(file: UploadFile = File(...)):
                 return
 
             for i, box_info in enumerate(box_infos):
-                if i > 3:
+                if i > ABORT_BOOK_COUNT:
+                    logging.warning("aborting due to too many books")
                     break
                 logging.info(f"Processing book {i+1}/{len(box_infos)}.")
                 bbox = box_info["box"]
