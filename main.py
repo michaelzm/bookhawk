@@ -128,8 +128,6 @@ async def upload_image(file: UploadFile = File(...)):
                 return
 
             for i, box_info in enumerate(box_infos):
-                if i > 3:
-                    break
                 logging.info(f"Processing book {i+1}/{len(box_infos)}.")
                 bbox = box_info["box"]
                 prob = box_info["prob"]
