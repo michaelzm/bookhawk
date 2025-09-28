@@ -95,6 +95,8 @@ async def upload_image(file: UploadFile = File(...)):
             logging.info("Starting YOLO detection.")
             det_results = yolo_model(img_np)
             box_infos = []
+            img_with_boxes = np.copy(img_np)
+
             for r in det_results:
                 for box, cls, conf in zip(r.boxes.xyxy, r.boxes.cls, r.boxes.conf):
                     if int(cls) == BOOK_CLASS_INDEX:
@@ -102,7 +104,22 @@ async def upload_image(file: UploadFile = File(...)):
                             "box": box.tolist(),
                             "prob": float(conf)
                         })
-            
+                        # Draw rectangle on the image
+                        x1, y1, x2, y2 = map(int, box.tolist())
+                        prob = float(conf)
+                        cv2.rectangle(img_with_boxes, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                        # Add label with probability
+                        label = f"Book: {prob:.2f}"
+                        cv2.putText(img_with_boxes, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+
+            # Stream the initial image with all boxes
+            import io
+            initial_io = io.BytesIO()
+            Image.fromarray(img_with_boxes).save(initial_io, format="PNG")
+            initial_b64 = base64.b64encode(initial_io.getvalue()).decode("utf-8")
+            yield json.dumps({"initial_image_with_boxes": initial_b64}) + "\n"
+            await asyncio.sleep(0.1)
+
             logging.info(f"YOLO detection found {len(box_infos)} books.")
             
             if not box_infos:
@@ -111,6 +128,8 @@ async def upload_image(file: UploadFile = File(...)):
                 return
 
             for i, box_info in enumerate(box_infos):
+                if i > 3:
+                    break
                 logging.info(f"Processing book {i+1}/{len(box_infos)}.")
                 bbox = box_info["box"]
                 prob = box_info["prob"]

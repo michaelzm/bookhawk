@@ -13,7 +13,8 @@
     
     <script type="text/babel">
         function App() {
-            const [uploadResult, setUploadResult] = React.useState(null);
+            const [uploadResults, setUploadResults] = React.useState([]);
+            const [initialImage, setInitialImage] = React.useState(null);
             const fileInputRef = React.useRef(null);
 
             const handleButtonClick = () => {
@@ -23,19 +24,70 @@
             const handleFileChange = async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
+
+                setUploadResults([]); // Clear previous results
+                setInitialImage(null); // Clear previous initial image
                 const formData = new FormData();
                 formData.append('file', file);
+
                 try {
                     const response = await fetch('http://localhost:8000/upload', {
                         method: 'POST',
                         body: formData
                     });
-                    const data = await response.json();
-                    setUploadResult(data);
-                    console.log('Upload successful:', data);
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+
+                    const read = async () => {
+                        const { done, value } = await reader.read();
+                        if (done) {
+                            // Process any remaining data in the buffer
+                            if (buffer) {
+                                try {
+                                    const data = JSON.parse(buffer);
+                                    if (data.initial_image_with_boxes) {
+                                        setInitialImage(data.initial_image_with_boxes);
+                                    } else {
+                                        setUploadResults(prevResults => [...prevResults, data]);
+                                    }
+                                } catch (error) {
+                                    console.error('Error parsing final JSON chunk:', error, buffer);
+                                }
+                            }
+                            return;
+                        }
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        
+                        // The last line might be incomplete, so we keep it in the buffer
+                        buffer = lines.pop();
+
+                        lines.forEach(line => {
+                            if (line) {
+                                try {
+                                    const data = JSON.parse(line);
+                                    if (data.initial_image_with_boxes) {
+                                        setInitialImage(data.initial_image_with_boxes);
+                                    } else {
+                                        setUploadResults(prevResults => [...prevResults, data]);
+                                    }
+                                } catch (error) {
+                                    console.error('Error parsing JSON line:', error, line);
+                                }
+                            }
+                        });
+
+                        read(); // Read the next chunk
+                    };
+
+                    read();
+
                 } catch (error) {
                     console.error('Error uploading image:', error);
-                    setUploadResult({ error: 'Upload failed' });
+                    setUploadResults([{ error: 'Upload failed' }]);
                 }
             };
             
@@ -50,21 +102,32 @@
                         onChange={handleFileChange}
                         style={{ display: 'none' }}
                     />
-                    {uploadResult && (
+                    {initialImage && (
+                        <div style={{ marginTop: '20px' }}>
+                            <h2>Initial Image with Detected Books</h2>
+                            <img src={`data:image/png;base64,${initialImage}`} alt="Initial image with boxes" style={{ maxWidth: '100%' }} />
+                        </div>
+                    )}
+                    {uploadResults.length > 0 && (
                         <div style={{ marginTop: '20px' }}>
                             <h2>Response:</h2>
-                            {uploadResult.error ? (
-                                <pre>{JSON.stringify(uploadResult, null, 2)}</pre>
-                            ) : (
-                                <div>
-                                    <h3>YOLO Crop</h3>
-                                    {uploadResult.yolo_crop_b64 && <img src={`data:image/png;base64,${uploadResult.yolo_crop_b64}`} alt="YOLO cropped image" style={{ maxWidth: '100%' }} />}
-                                    <h3>SAM Segmentation</h3>
-                                    {uploadResult.sam_segmentation_b64 && <img src={`data:image/png;base64,${uploadResult.sam_segmentation_b64}`} alt="SAM segmented image" style={{ maxWidth: '100%' }} />}
-                                    <h3>OCR Result</h3>
-                                    <pre>{uploadResult.ocr_result}</pre>
+                            {uploadResults.map((result, index) => (
+                                <div key={index} style={{ marginBottom: '20px', border: '1px solid #ccc', padding: '10px' }}>
+                                    {result.error ? (
+                                        <pre>{JSON.stringify(result, null, 2)}</pre>
+                                    ) : (
+                                        <div>
+                                            <h3>Book {index + 1}</h3>
+                                            <h4>YOLO Crop</h4>
+                                            {result.yolo_crop_b64 && <img src={`data:image/png;base64,${result.yolo_crop_b64}`} alt="YOLO cropped" style={{ maxWidth: '100%' }} />}
+                                            <h4>SAM Segmentation</h4>
+                                            {result.sam_segmentation_b64 && <img src={`data:image/png;base64,${result.sam_segmentation_b64}`} alt="SAM segmented" style={{ maxWidth: '100%' }} />}
+                                            <h4>OCR Result</h4>
+                                            <pre>{JSON.stringify(result.ocr_result, null, 2)}</pre>
+                                        </div>
+                                    )}
                                 </div>
-                            )}
+                            ))}
                         </div>
                     )}
                 </div>
