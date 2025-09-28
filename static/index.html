@@ -53,7 +53,18 @@
                     {uploadResult && (
                         <div style={{ marginTop: '20px' }}>
                             <h2>Response:</h2>
-                            <pre>{JSON.stringify(uploadResult, null, 2)}</pre>
+                            {uploadResult.error ? (
+                                <pre>{JSON.stringify(uploadResult, null, 2)}</pre>
+                            ) : (
+                                <div>
+                                    <h3>YOLO Crop</h3>
+                                    {uploadResult.yolo_crop_b64 && <img src={`data:image/png;base64,${uploadResult.yolo_crop_b64}`} alt="YOLO cropped image" style={{ maxWidth: '100%' }} />}
+                                    <h3>SAM Segmentation</h3>
+                                    {uploadResult.sam_segmentation_b64 && <img src={`data:image/png;base64,${uploadResult.sam_segmentation_b64}`} alt="SAM segmented image" style={{ maxWidth: '100%' }} />}
+                                    <h3>OCR Result</h3>
+                                    <pre>{uploadResult.ocr_result}</pre>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

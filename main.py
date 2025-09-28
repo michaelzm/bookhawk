@@ -11,6 +11,7 @@ import numpy as np
 import cv2
 import requests
 from ultralytics import YOLO, SAM
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
@@ -22,6 +23,16 @@ BOOK_CLASS_INDEX = int(os.getenv("BOOK_CLASS_INDEX", "73"))
 SAM_MODEL_PATH = os.getenv("SAM_MODEL_PATH", "sam2.1_b.pt")
 
 app = FastAPI()
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 yolo_model = YOLO(YOLO_MODEL_PATH)
@@ -98,15 +109,22 @@ async def upload_image(file: UploadFile = File(...)):
         Image.fromarray(segmented_image).save(seg_io, format="PNG")
         seg_b64 = base64.b64encode(seg_io.getvalue()).decode("utf-8")
 
+        # Perform OCR on the segmented image
         ocr_result = ocr(OLLAMA_HOST, MODEL, PROMPT, temp_path)
+        
+        # Clean up the temporary file
         os.remove(temp_path)
-        logging.info("File " + file.filename + " uploaded successfully.")
+        print("yolo_box", bbox,"yolo_prob", prob,
+            "yolo_crop_b64", yolo_b64,
+            "sam_segmentation_b64", seg_b64,
+            "ocr_result", ocr_result)
         return JSONResponse({
-            "ocr_result": ocr_result,
-            "yolo_box_image": yolo_b64,
-            "yolo_box_prob": prob,
-            "segmented_image": seg_b64
+            "yolo_box": bbox,
+            "yolo_prob": prob,
+            "yolo_crop_b64": yolo_b64,
+            "sam_segmentation_b64": seg_b64,
+            "ocr_result": ocr_result
         })
     except Exception as e:
-        logging.error("Error uploading file: " + str(e))
-        raise e
+        logging.error(f"Error processing image: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
