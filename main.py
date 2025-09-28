@@ -1,5 +1,7 @@
 import os
 import base64
+import logging
+logging.basicConfig(level=logging.INFO)
 from fastapi import FastAPI, File, UploadFile, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -53,7 +55,8 @@ def index():
         return f.read()
 
 @app.post("/upload")
-def upload_image(file: UploadFile = File(...)):
+async def upload_image(file: UploadFile = File(...)):
+    logging.info("Upload endpoint called with file: " + file.filename)
     try:
         image = Image.open(file.file).convert("RGB")
         img_np = np.array(image)
@@ -97,6 +100,7 @@ def upload_image(file: UploadFile = File(...)):
 
         ocr_result = ocr(OLLAMA_HOST, MODEL, PROMPT, temp_path)
         os.remove(temp_path)
+        logging.info("File " + file.filename + " uploaded successfully.")
         return JSONResponse({
             "ocr_result": ocr_result,
             "yolo_box_image": yolo_b64,
@@ -104,4 +108,5 @@ def upload_image(file: UploadFile = File(...)):
             "segmented_image": seg_b64
         })
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        logging.error("Error uploading file: " + str(e))
+        raise e
