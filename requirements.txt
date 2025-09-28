@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+python-dotenv
+ollama
+ultralytics
+opencv-python
+pillow
+python-multipart

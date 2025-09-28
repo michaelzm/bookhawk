@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Book OCR Upload</title>
+</head>
+<body>
+    <h2>Upload Book Image</h2>
+    <form id="uploadForm" enctype="multipart/form-data">
+        <input type="file" name="file" accept="image/*" required>
+        <button type="submit">Upload</button>
+    </form>
+    <pre id="result"></pre>
+    <script>
+        document.getElementById('uploadForm').onsubmit = async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const res = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            document.getElementById('result').textContent = JSON.stringify(data.ocr_result, null, 2);
+            // Show YOLO box image and probability
+            let yoloImg = document.getElementById('yoloImg');
+            if (!yoloImg) {
+                yoloImg = document.createElement('img');
+                yoloImg.id = 'yoloImg';
+                yoloImg.style.maxWidth = '400px';
+                document.body.appendChild(yoloImg);
+            }
+            yoloImg.src = 'data:image/png;base64,' + data.yolo_box_image;
+            yoloImg.alt = 'YOLO Box Image';
+            let yoloProb = document.getElementById('yoloProb');
+            if (!yoloProb) {
+                yoloProb = document.createElement('div');
+                yoloProb.id = 'yoloProb';
+                document.body.appendChild(yoloProb);
+            }
+            yoloProb.textContent = 'YOLO Box Probability: ' + (data.yolo_box_prob * 100).toFixed(2) + '%';
+            // Show segmented image
+            let segImg = document.getElementById('segImg');
+            if (!segImg) {
+                segImg = document.createElement('img');
+                segImg.id = 'segImg';
+                segImg.style.maxWidth = '400px';
+                document.body.appendChild(segImg);
+            }
+            segImg.src = 'data:image/png;base64,' + data.segmented_image;
+            segImg.alt = 'Segmented Image';
+        };
+    </script>
+</body>
+</html>
