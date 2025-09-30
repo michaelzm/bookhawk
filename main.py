@@ -11,7 +11,9 @@ from dotenv import load_dotenv
 from PIL import Image
 import numpy as np
 import requests
-from ultralytics import YOLO, SAM
+import torch
+from ultralytics import YOLO
+from segment_anything import SamPredictor, sam_model_registry
 from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
@@ -42,7 +44,27 @@ logging.info("Loading YOLO model...")
 yolo_model = YOLO(YOLO_MODEL_PATH)
 logging.info("YOLO model loaded.")
 logging.info("Loading SAM model...")
-sam_model = SAM(SAM_MODEL_PATH)
+
+# Path to your SAM checkpoint (use the Base model for M1: vit_b)
+SAM_MODEL_PATH = "sam_vit_b_01ec64.pth"
+
+# Load the checkpoint and unwrap if necessary
+checkpoint = torch.load(SAM_MODEL_PATH, map_location="mps")  # M1 GPU
+if "model" in checkpoint:
+    checkpoint = checkpoint["model"]
+
+# Build the SAM model without passing checkpoint
+sam = sam_model_registry["vit_b"](checkpoint=None)
+
+# Load the state_dict manually
+sam.load_state_dict(checkpoint)
+sam.to("mps")  # run on Apple GPU
+
+# Create the predictor
+sam_predictor = SamPredictor(sam)
+
+# Create the predictor
+sam_predictor = SamPredictor(sam)
 logging.info("SAM model loaded.")
 
 def ocr(ollama_host, model_name, prompt, image_path):
@@ -150,8 +172,13 @@ async def upload_image(file: UploadFile = File(...)):
                 yolo_b64 = base64.b64encode(yolo_io.getvalue()).decode("utf-8")
 
                 logging.info(f"Running SAM segmentation for book {i+1}.")
-                results = sam_model(img_np, bboxes=[bbox])
-                masks = results[0].masks.data.cpu().numpy()
+                sam_predictor.set_image(img_np)
+                x1, y1, x2, y2 = map(int, bbox)
+                input_box = np.array([x1, y1, x2, y2])
+                masks, _, _ = sam_predictor.predict(
+                    box=input_box[None, :],
+                    multimask_output=False
+                )
                 mask_raw = masks[0]
                 
                 # Find bounding box from mask using numpy
@@ -192,8 +219,8 @@ async def upload_image(file: UploadFile = File(...)):
                 try:
                     # The OCR result is a string that needs to be parsed into a JSON object
                     logging.info("Parsing OCR response.")
-                    ocr_result_json = json.loads(ocr_response)
-                except json.JSONDecodeError:
+                    ocr_result_json = ocr_response  # no json.loads needed
+                except:
                     # If the OCR result is not a valid JSON, treat it as a plain string
                     logging.warning("OCR response is not valid JSON. Treating as plain text.")
                     ocr_result_json = {"text": ocr_response}
