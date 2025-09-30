@@ -45,11 +45,21 @@ yolo_model = YOLO(YOLO_MODEL_PATH)
 logging.info("YOLO model loaded.")
 logging.info("Loading SAM model...")
 
-# Path to your SAM checkpoint (use the Base model for M1: vit_b)
+# Path to your SAM checkpoint
 SAM_MODEL_PATH = "sam_vit_b_01ec64.pth"
 
-# Load the checkpoint and unwrap if necessary
-checkpoint = torch.load(SAM_MODEL_PATH, map_location="mps")  # M1 GPU
+# Automatically select device
+if torch.backends.mps.is_available():  # Apple M1 GPU
+    device = torch.device("mps")
+elif torch.cuda.is_available():        # Nvidia GPU
+    device = torch.device("cuda")
+else:
+    device = torch.device("cpu")        # fallback to CPU
+
+logging.info(f"Using device: {device}")
+
+# Load the checkpoint
+checkpoint = torch.load(SAM_MODEL_PATH, map_location=device)
 if "model" in checkpoint:
     checkpoint = checkpoint["model"]
 
@@ -58,10 +68,7 @@ sam = sam_model_registry["vit_b"](checkpoint=None)
 
 # Load the state_dict manually
 sam.load_state_dict(checkpoint)
-sam.to("mps")  # run on Apple GPU
-
-# Create the predictor
-sam_predictor = SamPredictor(sam)
+sam.to(device)
 
 # Create the predictor
 sam_predictor = SamPredictor(sam)
