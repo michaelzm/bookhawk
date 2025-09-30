@@ -15,8 +15,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the application code
 COPY . .
 
+# 🔹 Download SAM ViT-B checkpoint during build
+RUN wget -O /app/sam_vit_b_01ec64.pth \
+    https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth
+
+# Optional: environment variable for model path
+ENV SAM_MODEL_PATH=/app/sam_vit_b_01ec64.pth
+
 # Expose a less common port to avoid conflicts
 EXPOSE 8082
 
-# Run the app on host 0.0.0.0 and port 8081
+# Run the app on host 0.0.0.0 and port 8082
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8082"]
