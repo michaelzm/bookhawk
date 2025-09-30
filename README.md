@@ -8,7 +8,7 @@ BookHawk is an intelligent application that uses computer vision and large langu
 ## ✨ Features
 
 - **Automatic Book Detection**: Utilizes the YOLOv10 model to accurately locate books in an image.
-- **Precise Segmentation**: Employs the SAM (Segment Anything Model) to isolate each detected book from its background.
+- **Precise Segmentation**: Employs the SAM (Segment Anything Model) via the native implementation to isolate each detected book from its background.
 - **Intelligent Information Extraction**: Leverages a powerful multimodal large language model (Ollama with Qwen) to perform OCR and extract the book's title and author.
 - **Interactive Web Interface**: A user-friendly frontend built with React to upload images and view results in real-time.
 - **Streaming API**: A FastAPI backend that streams results as they are processed, providing a responsive user experience.
@@ -33,7 +33,7 @@ BookHawk is an intelligent application that uses computer vision and large langu
 - **Frontend**: React.js
 - **Computer Vision**:
     - YOLOv10 for object detection
-    - Segment Anything Model (SAM) for segmentation
+    - Segment Anything Model (SAM) for segmentation (native implementation)
 - **LLM**: Ollama with a multimodal model (e.g., Qwen) for OCR and data extraction
 - **Deployment**: Docker (optional)
 
