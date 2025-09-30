@@ -33,7 +33,7 @@ BookHawk is an intelligent application that uses computer vision and large langu
 - **Frontend**: React.js
 - **Computer Vision**:
     - YOLOv10 for object detection
-    - Segment Anything Model (SAM) for segmentation (native implementation)
+    - Segment Anything Model (SAM) for segmentation (native implementation; not via Ultralytics)
 - **LLM**: Ollama with a multimodal model (e.g., Qwen) for OCR and data extraction
 - **Deployment**: Docker (optional)
 
