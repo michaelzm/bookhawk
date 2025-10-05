@@ -16,8 +16,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # 🔹 Download SAM ViT-B checkpoint during build
-RUN wget -O /app/sam_vit_b_01ec64.pth \
-    https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth
+RUN python -c "import urllib.request; urllib.request.urlretrieve('https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth', '/app/sam_vit_b_01ec64.pth')"
 
 # Optional: environment variable for model path
 ENV SAM_MODEL_PATH=/app/sam_vit_b_01ec64.pth
