@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-dotenv
+ultralytics
+pillow
+python-multipart
+segment-anything-py
+torch
+torchvision
